@@ -1,3 +1,4 @@
+from tomo2plt import __version__
 from setuptools import setup, find_packages
 
 with open("README.md", "r") as fh:
@@ -7,14 +8,14 @@ with open("requirements.txt") as f:
     required_list = f.read().splitlines()
 
 setup(
-    name="tomotools",
-    version="0.1.2",
+    name="tomo2plt",
+    version=__version__,
     author="Matteo Bagagli",
-    author_email="matteo.bagagli@ingv.it",
-    description="Collection of modules and bin for handling of SIMULPS and FMTOMO formats",
+    author_email="matteo.bagagli@dst.unipi.it",
+    description="Collection of modules and routines for handling SIMULPS outputs and plot them",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/mbagagli/tomotools",
+    url="https://github.com/mbagagli/tomo2plt",
     python_requires='>=3.7',
     install_requires=required_list,
     setup_requires=['wheel'],
@@ -29,11 +30,6 @@ setup(
     include_package_data=True,
     zip_safe=False,
     scripts=[
-        'bin/velest2simulps_converter.py',
         'bin/Make3DsimulPS_MOD.py',
-        'bin/Make3DsimulPS_SYNTHETICS.py',
-        'bin/simulps2fmtomo.py',
-        'bin/CreateAnalyze_EQKS.py',
-        'bin/CreateError_df.py',
-        'bin/CreateGMTfiles_tomotools.py']
+        'bin/Make3DsimulPS_SYNTHETICS.py']
 )

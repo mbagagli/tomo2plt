@@ -1,7 +1,10 @@
+import os
 import sys
 import numpy as np
 import pandas as pd
 from pathlib import Path
+
+from tomo2plt import __version__
 
 
 ORIGINLON = 10.5
@@ -252,8 +255,167 @@ def read_simulps_output(file_path, store_path):
     return outpd
 
 
-if __name__ == "__main__":
-    read_simulps_output(sys.argv[1], sys.argv[2])
+
+class MOD(object):
+    def __init__(self, modfile, origin_lon=None, origin_lat=None):
+        """ Class model for MOD file SIMULPS
+        ### SIMUL
+        # short distance conversion factors
+        #      one min lat   1.8525 km --> 1 degree (*60 min) 111.15 km
+        #      one min lon   1.2911 km --> 1 degree (*60 min) 77.466 km
+        """
+
+        # Constants
+        self.GRDFMT = " %.1f"
+        self.VELFMT = " %4.2f"
+        self.DEGKMLAT = 111.15  # km for degree --> Check SIMULPS
+        self.DEGKMLON = 77.466  # km for degree --> Check SIMULPS
+        # Attributes
+        self.filepath = None
+        self.general = {}
+        self.xarr = []
+        self.yarr = []
+        self.zarr = []
+        self.matrix = []
+        self.velocities = []
+        self.origin = []
+        self.lon_grid = []
+        self.lat_grid = []
+        if not origin_lon or not origin_lat:
+            print("WARNING:  geographical coordinates will not be possible "
+                  "without a decimal degree origin")
+        else:
+            self.origin = (origin_lon, origin_lat)
+        #
+        self.import_file(modfile)
+
+    def import_file(self, filepath):
+        """ Simply add """
+        with open(filepath, "r") as IN:
+            for idx, line in enumerate(IN):
+
+                lines = line.strip().split()
+                if idx == 0:
+                    self.general["bldunits"] = float(lines[0])
+                    self.general["nx"] = int(lines[1])
+                    self.general["ny"] = int(lines[2])
+                    self.general["nz"] = int(lines[3])
+
+                elif idx == 1:
+                    self.xarr = np.array([float(xx) for xx in lines])
+
+                elif idx == 2:
+                    self.yarr = np.array([float(yy) for yy in lines])
+
+                elif idx == 3:
+                    self.zarr = np.array([float(zz) for zz in lines])
+
+                elif (idx-5)%self.general["ny"] == 0:
+                    self.velocities.append(float(lines[0]))
+
+                else:
+                    pass
+
+        # Close File, create matrix  --> Zx(YxX)
+        _mat = []
+        for _z in range(self.general["nz"]):
+            _mat.append(np.full((self.general["ny"], self.general["nx"]),
+                                self.velocities[_z], dtype="float32"))
+
+        self.matrix = np.array(_mat)
+
+    def calculate_lon_lat_grid(self):
+        if self.origin:
+            self.lon_grid = [(_x/self.DEGKMLON)+self.origin[0] for _x in self.xarr]
+            self.lat_grid = [(_y/self.DEGKMLAT)+self.origin[1] for _y in self.yarr]
+        else:
+            logger.error("MISSING ORIGIN!")
+
+    def set_origin(self, lon, lat):
+        self.origin = (float(lon), float(lat))
+
+    def get_origin(self):
+        if self.origin:
+            return self.origin
+        else:
+            return None
+
+    def _reverse_east_west(self):
+        """ If called it fill flip the X direction of the matrix """
+        if len(self.matrix) == 0:
+            raise AttributeError("Missing matrix! Please import file first")
+        #
+        self.matrix = self.matrix[:, :, ::-1]
+
+    def _reverse_north_south(self):
+        """ If called it fill flip the Y direction of the matrix """
+        if len(self.matrix) == 0:
+            raise AttributeError("Missing matrix! Please import file first")
+        #
+        self.matrix = self.matrix[:, ::-1, :]
+
+    def write_mod(self, outfile="MOD", reverse_lon=False, reverse_lat=False):
+        """ Writing out a MOD file for inversions.
+            if reverse_lon specified the matrix will be flipped on the LON-axis
+        """
+        if reverse_lon:
+            self._reverse_east_west()
+        if reverse_lat:
+            self._reverse_north_south()
+        #
+        print("Creating outputs")
+        with open(outfile, "w") as OUT:
+            # 1
+            OUT.write((" %3.1f %2d %2d %2d      Created by TOMO2PLT - v_%s"+os.linesep) %
+                      (self.general["bldunits"],
+                       self.general["nx"],
+                       self.general["ny"],
+                       self.general["nz"], __version__))
+            # 2
+            for n, x in enumerate(self.xarr):
+                OUT.write(self.GRDFMT % x)
+                if n == self.general["nx"]-1:
+                    OUT.write(os.linesep)
+            # 3
+            for n, y in enumerate(self.yarr):
+                OUT.write(self.GRDFMT % y)
+                if n == self.general["ny"]-1:
+                    OUT.write(os.linesep)
+            # 4
+            for n, z in enumerate(self.zarr):
+                OUT.write(self.GRDFMT % z)
+                if n == self.general["nz"]-1:
+                    OUT.write(os.linesep)
+            # 5
+            OUT.write("  0  0  0"+os.linesep)
+
+            # VEL
+            for zz in range(self.general["nz"]):
+                for yy in range(self.general["ny"]):
+                    for xx in range(self.general["nx"]):
+                        OUT.write(self.VELFMT % self.matrix[zz, yy, xx])
+                    #
+                    OUT.write(os.linesep)
+
+    def export_grid(self, outfile="MOG.grid", in_coordinates=False):
+        """ Writing out an ascii file (x,y) for plot inversion grid"""
+
+        if in_coordinates and self.origin:
+            print("Creating MAP-GRIDPOINTS ... Geographical")
+            xvals_grid = [(_x/self.DEGKMLON)+self.origin[0] for _x in self.xarr]
+            yvals_grid = [(_y/self.DEGKMLAT)+self.origin[1] for _y in self.yarr]
+        else:
+            print("Creating MAP-GRIDPOINTS ... Cartesian")
+            xvals_grid, yvals_grid = self.xarr, self.yarr
+
+        with open(outfile, "w") as OUT:
+            for xg in xvals_grid:
+                for yg in yvals_grid:
+                    OUT.write(("%9.5f  %9.5f"+os.linesep) % (xg, yg))
+
+
+# if __name__ == "__main__":
+#     read_simulps_output(sys.argv[1], sys.argv[2])
 
 
 # ==============================================================
