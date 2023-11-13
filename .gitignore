@@ -1,4 +1,5 @@
 ### Don't account for the accidentally compiled python
+tutorials/
 *.pyc
 __pycache__
 *.log
