@@ -31,5 +31,6 @@ setup(
     zip_safe=False,
     scripts=[
         'bin/Make3DsimulPS_MOD.py',
-        'bin/Make3DsimulPS_SYNTHETICS.py']
+        'bin/Make3DsimulPS_SYNTHETICS.py',
+        'bin/extract_simulps_output.py']
 )

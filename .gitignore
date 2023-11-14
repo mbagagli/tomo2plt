@@ -3,6 +3,7 @@ tutorials/
 *.pyc
 __pycache__
 *.log
+.DS_store
 
 # Distribution / packaging
 .Python
