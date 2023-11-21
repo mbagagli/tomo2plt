@@ -1,5 +1,4 @@
 import os
-import sys
 import yaml
 import numpy as np
 import pandas as pd
@@ -202,7 +201,7 @@ def __read_block_res__(file_path, start_fields, end_fields, elem_per_line):
     return (OUTMAT, zval_list)
 
 
-def __extract_events__(file_path):
+def __extract_events__(file_path, out_path="events.csv"):
     """
                FINAL LOCATIONS
 
@@ -255,118 +254,105 @@ def __extract_events__(file_path):
 
     # ===============================================================
     with open(str(fp), "r") as IN:
+        with open(str(out_path), "w") as OUT:
+            record_on = False
+            dict_idx = 0
+            for xx, line in enumerate(IN):
+                line_fields = line.strip().split()
+                if not line_fields: continue
 
-        record_on = False
-        dict_idx = 0
-        for xx, line in enumerate(IN):
-            line_fields = line.strip().split()
-            if not line_fields: continue
+                # ========================================================
 
-            # ========================================================
+                if line_fields[:3] == ["YRMODY", "HRMN", "SEC"]:
+                    record_on = True
+                    continue
 
-            if line_fields[:3] == ["YRMODY", "HRMN", "SEC"]:
-                record_on = True
-                continue
+                if line_fields[0] == "RMSALL:":
+                    break
 
-            if line_fields[0] == "RMSALL:":
-                break
+                if record_on:
+                    _indict = {kk: None for kk in __events_dictionary_keys__}
+                    OUTDICT[str(dict_idx)] = _indict
 
-            if record_on:
-                _indict = {kk: None for kk in __events_dictionary_keys__}
-                OUTDICT[str(dict_idx)] = _indict
+                    # next line to avoid cross-century issues
+                    if int(line[6]) > 3:
+                        _yr = 1900
+                    else:
+                        _yr = 2000
 
-                # next line to avoid cross-century issues
-                if int(line[6]) > 3:
-                    _yr = 1900
-                else:
-                    _yr = 2000
+                    # --- Origin TIME
+                    year = _yr + int(line[6:8])
+                    month = int(line[ 8:10])
+                    day = int(line[10:12])
 
-                # --- Origin TIME
-                year = _yr + int(line[6:8])
-                month = int(line[ 8:10])
-                day = int(line[10:12])
+                    hour = int(line[13:15])
+                    if hour == 24:
+                        day += 1
+                        hour = 0
+                    minute = int(line[15:17])
+                    if minute == 60:
+                        hour += 1
+                        minute = 0
 
-                hour = int(line[13:15])
-                if hour == 24:
-                    day += 1
-                    hour = 0
-                minute = int(line[15:17])
-                if minute == 60:
-                    hour += 1
-                    minute = 0
+                    seconds = float(line[17:23])
+                    if seconds == 60:
+                        minute += 1
+                        seconds = 0
 
-                seconds = float(line[17:23])
-                if seconds == 60:
-                    minute += 1
-                    seconds = 0
+                    ot = "%04d-%02d-%02d %02d:%02d:%05.2f" % (
+                                year, month, day, hour, minute, seconds)
 
-                ot = "%04d-%02d-%02d %02d:%02d:%05.2f" % (
-                            year, month, day, hour, minute, seconds)
+                    # --------------- lon / lat / dep
 
-                # --------------- lon / lat / dep
+                    lat = __degreeminute2decimaldegree__(line[24:33])
+                    lon = __degreeminute2decimaldegree__(line[35:44])
+                    dep = float(line[45:51])
+                    mag = float(line[53:58])
+                    nop = int(line[58:62])
+                    rms = float(line[63:68])
 
-                lat = __degreeminute2decimaldegree__(line[24:33])
-                lon = __degreeminute2decimaldegree__(line[35:44])
-                dep = float(line[45:51])
-                mag = float(line[53:58])
-                nop = int(line[58:62])
-                rms = float(line[63:68])
+                    xxx = float(line[68:75])
+                    yyy = float(line[75:82])
+                    zzz = float(line[82:-1])
 
-                xxx = float(line[68:75])
-                yyy = float(line[75:82])
-                zzz = float(line[82:-1])
-
-                # ===========================================  POPULATE
-                OUTDICT[str(dict_idx)]["OT"] = datetime.strptime(
-                                                   ot, '%Y-%m-%d %H:%M:%S.%f')
-                OUTDICT[str(dict_idx)]["LONGITUDE"] = lon
-                OUTDICT[str(dict_idx)]["LATITUDE"] = lat
-                OUTDICT[str(dict_idx)]["DEPTH"] = dep
-                OUTDICT[str(dict_idx)]["MAGNITUDE"] = mag
-                OUTDICT[str(dict_idx)]["NPHASES"] = nop
-                OUTDICT[str(dict_idx)]["RMS"] = rms
-                OUTDICT[str(dict_idx)]["X"] = xxx
-                OUTDICT[str(dict_idx)]["Y"] = yyy
-                OUTDICT[str(dict_idx)]["Z"] = zzz
-                #
-                dict_idx += 1
+                    # ===========================================  POPULATE
+                    OUTDICT[str(dict_idx)]["OT"] = datetime.strptime(
+                                                       ot, '%Y-%m-%d %H:%M:%S.%f')
+                    OUTDICT[str(dict_idx)]["LONGITUDE"] = lon
+                    OUTDICT[str(dict_idx)]["LATITUDE"] = lat
+                    OUTDICT[str(dict_idx)]["DEPTH"] = dep
+                    OUTDICT[str(dict_idx)]["MAGNITUDE"] = mag
+                    OUTDICT[str(dict_idx)]["NPHASES"] = nop
+                    OUTDICT[str(dict_idx)]["RMS"] = rms
+                    OUTDICT[str(dict_idx)]["X"] = xxx
+                    OUTDICT[str(dict_idx)]["Y"] = yyy
+                    OUTDICT[str(dict_idx)]["Z"] = zzz
+                    #
+                    dict_idx += 1
+                    OUT.write(("%s %s %9.5f %10.5f %6.2f %4.1f %3d %4.2f %8.2f %8.2f %6.2f" + os.linesep) % (
+                        ot.split()[0], ot.split()[1],
+                        lon, lat, dep, mag, nop, rms, xxx, yyy, zzz))
 
     df = pd.DataFrame.from_dict(OUTDICT, orient="index")
     return (df, OUTDICT)
 
-# =================================================================
-# =================================================================
-# =================================================================
-# =================================================================
-# =================================================================
-# =================================================================
-# =================================================================
-# =================================================================
 
-
-def read_configuration_file(config_path):
-    # Can be either a `Path` or `str` instance
-    with open(str(config_path), 'r') as yaml_file:
-        configs = yaml.load(yaml_file, Loader=yaml.FullLoader)
-    return configs
-
-
-def create_matrix(xarr_geo, yarr_geo, zarr_geo, xarr, yarr,
-                  vel_mat, delta_mat, res_mat, khit_mat, dws_mat,
-                  out_file="outgrid.txt"):
+def __create_matrix__(xarr_geo, yarr_geo, zarr_geo, xarr, yarr,
+                      vel_mat, delta_mat, res_mat, khit_mat, dws_mat,
+                      out_path="outgrid.txt"):
     data = []
-    with open(out_file, "w") as OUT:
+    with open(str(out_path), "w") as OUT:
         for _z, zz in enumerate(zarr_geo):
             for _y, yy in enumerate(yarr_geo):
                 for _x, xx in enumerate(xarr_geo):
 
-                    OUT.write("%11.5f  %11.5f  %8.1f  %8.1f  %8.3f  %6.3f  %6.3f  %5.3f  %5d  %5d\n" % (
-                                xx, yy, xarr[_x], yarr[_y], zz,
-                                vel_mat[_z, _y, _x],
-                                delta_mat[_z, _y, _x],
-                                res_mat[_z, _y, _x],
-                                int(khit_mat[_z, _y, _x]),
-                                int(dws_mat[_z, _y, _x])))
+                    OUT.write("%11.5f  %11.5f  %8.1f  %8.1f  %8.3f  %6.3f  %7.3f  %5.3f  %5d  %5d\n" % (
+                              xx, yy, xarr[_x], yarr[_y], zz,
+                              vel_mat[_z, _y, _x],
+                              delta_mat[_z, _y, _x],
+                              res_mat[_z, _y, _x],
+                              int(khit_mat[_z, _y, _x]),
+                              int(dws_mat[_z, _y, _x])))
                     # Append data to the list
                     data.append([xx, yy, xarr[_x], yarr[_y], zz,
                                  vel_mat[_z, _y, _x],
@@ -394,13 +380,29 @@ def create_matrix(xarr_geo, yarr_geo, zarr_geo, xarr, yarr,
                 columns=data_types.keys())
     df = df.astype(data_types)
 
-    return df
+    return (df, data)
+
+# =================================================================
+# =================================================================
+# =================================================================
+# =================================================================
+# =================================================================
+# =================================================================
+# =================================================================
+# =================================================================
 
 
-def read_simulps_output(file_path, store_path, config_path):
-    store_path = Path(store_path)
+def read_configuration_file(config_path):
+    # Can be either a `Path` or `str` instance
+    with open(str(config_path), 'r') as yaml_file:
+        configs = yaml.load(yaml_file, Loader=yaml.FullLoader)
+    return configs
+
+
+def read_simulps_output(file_path, configs):
+
     file_path = Path(file_path)
-    configs = read_configuration_file(config_path)
+    store_path = Path(configs["store_tag"])
     #
     (xarr, yarr, zarr) = __extract_grid_nodes__(
                                 str(file_path), geographic=True)
@@ -470,23 +472,31 @@ def read_simulps_output(file_path, store_path, config_path):
     DELTA = ((VEL - MIN1D_VOLUME) / MIN1D_VOLUME) * 100
     assert VEL.shape == DELTA.shape == RES.shape == KHIT.shape == DWS.shape
 
-    matrixpd = create_matrix(xarr, yarr, depths, xxx, yyy,
-                             VEL, DELTA, RES, KHIT, DWS,
-                             out_file=str(store_path))
+    (matrixpd, GRID) = __create_matrix__(
+                xarr, yarr, depths, xxx, yyy,
+                VEL, DELTA, RES, KHIT, DWS,
+                out_path=str(
+                    store_path.parent / (store_path.stem + '_grid.csv')
+                ))
+
     matrixpd.to_csv(
-            str(store_path.parent / (store_path.stem + '_pandas.csv')),
+            str(store_path.parent / (store_path.stem + '_grid_pandas.csv')),
             float_format='%.5f',
             index=False)
 
     if configs["extract_events"]:
         print("")
         print("... Extracting EVENTS")
-        eventpd, EVENTS = __extract_events__(file_path)
+        (eventpd, EVENTS) = __extract_events__(
+                file_path,
+                out_path=str(
+                    store_path.parent / (store_path.stem + '_events.csv')
+                ))
         eventpd.to_csv(
-                str(store_path.parent / (store_path.stem + '_events.csv')),
+                str(store_path.parent / (store_path.stem + '_events_pandas.csv')),
                 index=False)
 
-    return (matrixpd, eventpd)
+    return (matrixpd, eventpd, GRID, EVENTS)
 
 
 class MOD(object):
@@ -543,7 +553,7 @@ class MOD(object):
                 elif idx == 3:
                     self.zarr = np.array([float(zz) for zz in lines])
 
-                elif (idx-5)%self.general["ny"] == 0:
+                elif (idx-5) % self.general["ny"] == 0:
                     self.velocities.append(float(lines[0]))
 
                 else:
@@ -562,7 +572,7 @@ class MOD(object):
             self.lon_grid = [(_x/self.DEGKMLON)+self.origin[0] for _x in self.xarr]
             self.lat_grid = [(_y/self.DEGKMLAT)+self.origin[1] for _y in self.yarr]
         else:
-            logger.error("MISSING ORIGIN!")
+            raise ValueError("MISSING ORIGIN!")
 
     def set_origin(self, lon, lat):
         self.origin = (float(lon), float(lat))
@@ -645,32 +655,3 @@ class MOD(object):
             for xg in xvals_grid:
                 for yg in yvals_grid:
                     OUT.write(("%9.5f  %9.5f"+os.linesep) % (xg, yg))
-
-# # ========================================================
-# # =======================  OLD-REFERENCE
-# def create_matrix(xarr, yarr, zarr,
-#                   vel_mat, delta_mat, res_mat,
-#                   out_file="outgrid.txt"):
-#     data = []
-#     with open(out_file, "w") as OUT:
-#         for _z, zz in enumerate(zarr):
-#             for _y, yy in enumerate(yarr):
-#                 for _x, xx in enumerate(xarr):
-#                     OUT.write("%11.5f  %11.5f  %8.3f  %6.3f  %6.3f  %5.3f\n" % (
-#                                 xx, yy, zz,
-#                                 vel_mat[_z, _y, _x],
-#                                 delta_mat[_z, _y, _x],
-#                                 res_mat[_z, _y, _x]))
-#                     # Append data to the list
-#                     data.append([xx, yy, zz,
-#                                  vel_mat[_z, _y, _x],
-#                                  delta_mat[_z, _y, _x],
-#                                  res_mat[_z, _y, _x]])
-
-#     df = pd.DataFrame(
-#                 data,
-#                 columns=['X', 'Y', 'Z', 'Velocity', 'Delta', 'RDE'])
-#     return df
-# #
-#     matrixpd = create_matrix(xarr, yarr, depths, VEL, DELTA, RES,
-#                              out_file=str(store_path))
