@@ -32,5 +32,8 @@ setup(
     scripts=[
         'bin/Make3DsimulPS_MOD.py',
         'bin/Make3DsimulPS_SYNTHETICS.py',
-        'bin/extract_simulps_output.py']
+        'bin/extract_simulps_output.py',
+        'bin/make_plots_general_DEPTH-SLICES.py',
+        'bin/make_plots_general_DEPTH-SLICES_synthetics.py',
+        'bin/make_plots_general_DEPTH_SECTIONS.py',]
 )

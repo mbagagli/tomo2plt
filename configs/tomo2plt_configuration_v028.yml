@@ -1,0 +1,105 @@
+version: "0.2.7"
+
+work_path: "."
+tag: "examples"
+
+
+GENERAL:
+  origin_lon:  10.5
+  origin_lat:  46.0
+  degkm_lon: 77.466  # km  (short-distance conversion X --> check SIMULPS output)
+  degkm_lat: 111.15  # km  (short-distance conversion Y --> check SIMULPS output)
+
+
+INPUT_MODEL_1D: [
+    [-10.0, 5.000],
+    [-5.0, 5.250],
+    [2.5,  5.800],
+    [10.0, 6.000],
+    [20.0, 6.200],
+    [30.0, 6.800],
+    [45.0, 7.800],
+    [60.0, 8.100],
+    [90.0, 8.150],
+    [150.0, 8.20]
+  ]
+
+
+DEPTH_SLICES:
+  store_dir: "./DepthSlices"
+  what_to_plot: "delta"
+  x_km_slice: 15       # cell size in longitude (km)
+  y_km_slice: 15       # cell size in latitude (km)
+  gauss_smooth: 0.9    # GAUSSIAN KERNEL value or None/False
+  mask_rde: 0.2
+  interpolate: "linear"
+  # SLICE_PLOT_DIR = "./SLICES_%.01fx%.01f_%.01f" % (X_KM_SLICE, Y_KM_SLICE, SMOOTH_SLICE)
+  lon_min: 1.0
+  lon_max: 21.0
+  lat_min: 41.0
+  lat_max: 51.0
+  dep_min: 0.0
+  dep_max: 70.0
+  #
+  isolines: false
+  plot_nodes: true
+  plot_boundaries: true
+  plot_coastline: true
+  #
+  plot_events: true
+  show: false
+
+DEPTH_SECTIONS:
+  helper_section_map: true
+  helper_section_map_bounds: [[1,21], [41,51]]  # [[lonmin,lonmax], [latmin, latmax]]
+  store_dir: "./DepthSections"
+  what_to_plot: "pvel"
+  x_km_sect: 9.0       # cell size in longitude (km)
+  y_km_sect: 2.5       # cell size in latitude (km)
+  gauss_smooth: 0.9     # GAUSSIAN KERNEL value or None/False
+  mask_rde: 0.2
+  interpolate: "linear"
+  dem_grid: "/Users/matteo/ETH/Tomography_TD+EPOS+AARSC_FMTOMO/DEM_GRIDs_ALPS/aadem.1km.2.5-19-41.5-49.5.xyz"  # 500m / 1km
+  # Profiles may be a list/tuple of start/end points or a string
+  #   string must be a path to a *py file with a PROFILES variable
+  #   of a list/tuple collection.
+  # (i.e.) profiles: "path/to/my/profiles.py"
+  profiles: [
+    #      (Name,  Start ,  End)
+    # ( "Prof_A", (x,y,z), (x,y,z))
+        ["TD_A_(TRANSALP)",
+        [12.0,  49.0, 0],
+        [12.0,  43.0, 70]
+    ], ["TD_B_(EGT_NFP-20_EAST)",
+        [9.3,  49.5, 0],
+        [9.3,  42.0, 70]
+    ], ["TD_C_(BASEL-CHIASSO)",
+        [7.23,  48.0, 0],
+        [10.39,  44.0, 70]
+    ], ["TD_D_(NFP-20_WEST)",
+        [6.25,  47.0, 0],
+        [10.0,  44.0, 70]
+    ], ["TD_E_(ECORS-CROP)",
+        [5.0, 46.50, 0],
+        [8.5, 44.58, 70]
+    ]
+  ]
+  isolines: [6.0, 7.0, 8.0]
+  plot_events: true
+  project_events: 10.0  # project the events in +/- value distance from profile.
+                        # if none, false, or empty list/tuple, plots all events!
+  show: true
+
+
+SYNTHETICS:
+  plot_contours: true
+  folder: "SYNTH_CF.BOUNDARIES_CM_C"
+
+# ======================= Do not change ... they should maybe embedded
+#                         in the distribution as well ...
+DATASETS:
+  shapefile_coastlines: "./datas/coastlines/ne_10m_coastline/ne_10m_coastline.shp"
+  shapefile_boundaries: "./datas/coastlines/ne_10m_admin_0_boundary_lines_land/ne_10m_admin_0_boundary_lines_land.shp"
+  alparray_bound: "./datas/AlpArray_BORDER_250km.dat"
+  dem_grid: ""
+

@@ -44,19 +44,33 @@ def cpt2cmap(filename, n_bins=256):
 class TomoGrid:
     def __init__(self, file_path, **kwargs):
         self.data = self.__load_grid__(file_path, **kwargs)
-        self.coordinates = self.data[:, :3]
-        self.pvel = self.data[:, 3]
-        self.pdel = self.data[:, 4]
-        self.prde = self.data[:, 5]
+        self.coordinates = self.data[:, [0, 1, 4]]
+        self.xyz = self.data[:, [2, 3, 4]]
+        #
+        self.pvel = self.data[:, 5]
+        self.pdel = self.data[:, 6]
+        self.prde = self.data[:, 7]
+        self.khit = self.data[:, 8]
+        self.dws = self.data[:, 9]
         #
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+    def __str__(self):
+        string_format = (  # 0          1      2  3    4       5       6
+                "Columns: LONGITUDE, LATITUDE, X, Y, DEPTH, Velocity, Delta, "
+                # 7    8     9
+                "RDE, KHIT, DWS\n"
+                "Total Nodes:  %d" % self.data.shape[0]
+            )
+        return string_format
 
     def __load_grid__(self, file_path, **kwargs):
         fp = Path(file_path)
         #
         if fp.exists():
-            _data = np.genfromtxt(str(fp.resolve()))  #, delimiter=" ")  # Change delimiter according to your file
+            # Change delimiter according to your file
+            _data = np.genfromtxt(str(fp.resolve()))  # , delimiter=" ")
         else:
             raise ValueError("FILE:  %s  missing!" % str(fp.resolve()))
         #
@@ -124,7 +138,8 @@ class TomoGrid:
                          increment_x_km=0.09, increment_y_km=0.09,
                          depth=20,  what="delta",
                          smooth=0.9, mask_rde=0.2,
-                         interpolate="linear"):
+                         interpolate="linear",
+                         isolines=[]):
 
         """ Extract and plot """
         (x_grid, y_grid, values_on_plane) = self.get_depth_slice(
@@ -157,14 +172,22 @@ class TomoGrid:
                        shading='gouraud', rasterized=True)
 
         cbar = plt.colorbar(label='Vp (%)', shrink=0.4)
-
         cbar.set_ticks([-10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10])  # Specify the values where you want the ticks
         cbar.set_ticklabels(['-10', '-8', '-6', '-4', '-2', '0',
                              '2', '4', '6', '8', '10'])
 
         plt.xlabel('longitude')
         plt.ylabel('latitude')
-        # plt.title('DEPTH SLICE @ %.1f km' % depth)
+
+        # ----------------------------  ISOLINES
+        if isolines:
+            contours = ax.contour(
+                        x_grid, y_grid, values_on_plane,
+                        levels=isolines, colors='black',
+                        linestyles='-', lw=0.5)
+
+            # Add labels to the contours
+            contours.clabel(inline=True, fontsize=9, colors='black')
 
         if mask_rde:
             # Create mask for lower and upper values
@@ -187,7 +210,9 @@ class TomoGrid:
 
             # Draw contour line at threshold
             contour = ax.contour(x_grid_rde, y_grid_rde, values_on_plane_rde,
-                                 levels=[mask_rde], lw=1.1, colors='black')
+                                 levels=[mask_rde],  # lw=1.1,
+                                 linewidths=1.1,
+                                 colors='black')
 
         return (fig, ax)
 
@@ -250,7 +275,8 @@ class TomoGrid:
                            increment_x_km=10, increment_y_km=10,
                            depth=20,  what="pvel", interpolate="linear",
                            smooth=False, mask_rde=False,
-                           add_topography=False):
+                           add_topography=False,
+                           isolines=[]):
 
         """ Extract and plot """
         (x_grid, y_grid, profile_km, values_on_plane) = self.get_depth_section(
@@ -297,15 +323,15 @@ class TomoGrid:
         if add_topography:
             DEM = Plane_2D_Grid(add_topography, tag="DEM")
             print("Plotting DEM:  %s" % add_topography)
-            (_topo_prof, _topo_height) = DEM.get_profile(start, end, 2.0,
-                                              query_profile_only=True)
+            (_topo_prof, _topo_height) = DEM.get_profile(
+                                                start, end, 2.0,
+                                                query_profile_only=True)
             _topo_height[_topo_height < 0.0] = 0.0  # np.nan
 
             ax1.plot(_topo_prof, -(_topo_height/1000.0)*4, color="black")
-            # # To remove the box around the subplot
+            # To remove the box around the subplot
             ax1.spines['top'].set_visible(False)
             ax1.spines['right'].set_visible(False)
-
 
         # -------------------------------------------------------------
         # ---------------------------------------------  VEL.MODEL
@@ -327,10 +353,20 @@ class TomoGrid:
         # cbar.set_ticklabels(['3', '4', '5', '6', '7', '8', '9'])
         # cbar.ax.invert_yaxis()
 
+        # ----------------------------  ISOLINES
+        if isolines:
+            contours = ax1.contour(
+                        x_grid, y_grid, values_on_plane,
+                        levels=isolines, colors='black',
+                        linestyles='-', lw=0.5)
+
+            # Add labels to the contours
+            contours.clabel(inline=True, fontsize=9, colors='black')
+
         # ----------------------------  7.25 Tomographic MOHO
         ax1.contour(x_grid, y_grid, values_on_plane,
-                   levels=[7.25], colors='white',
-                   linestyles='dashed', lw=2)
+                    levels=[7.25], colors='white',
+                    linestyles='dashed', lw=2)
 
         # ----------------------------  Resolution Matrix
         if mask_rde:
@@ -349,8 +385,8 @@ class TomoGrid:
 
             # Draw contour line at threshold
             contour = ax1.contour(x_grid_rde, y_grid_rde, values_on_plane_rde,
-                                 levels=[mask_rde], colors='black',
-                                 linestyles='dashed')
+                                  levels=[mask_rde], colors='black',
+                                  linestyles='dashed')
 
         # ----------------------------  Finish Axis
         ax1.set_xlabel('distance along profile (km)')
@@ -375,22 +411,28 @@ class Plane_2D_Grid:
         Valid for X Y VALUE
     """
 
-    def __init__(self, file_path, **kwargs):
-        self.data = self.__load_grid__(file_path, **kwargs)
+    def __init__(self, file_path, tag="xyzGrid", **kwargs):
+        if isinstance(file_path, (str, Path)):
+            self.data = self.__load_grid__(file_path, **kwargs)
+        elif isinstance(file_path, np.ndarray):
+            assert file_path.shape[1] == 3
+            self.data = file_path
+        else:
+            raise ValueError("Unsupported input type:  %s" % type(file_path))
+        #
         self.coordinates = self.data[:, :-1]
         self.values = self.data[:, -1]
+        self.tag = tag
         #
         for key, value in kwargs.items():
             setattr(self, key, value)
 
     def __load_grid__(self, file_path, **kwargs):
         fp = Path(file_path)
-        #
         if fp.exists():
-            _data = np.loadtxt(str(fp.resolve()))  #, delimiter=" ")  # Change delimiter according to your file
+            _data = np.loadtxt(str(fp.resolve()), **kwargs)  #, delimiter=" ")  # Change delimiter according to your file
         else:
             raise ValueError("FILE:  %s  missing!" % str(fp.resolve()))
-        #
         return _data
 
     def get_profile(self, start, end, step_km, query_profile_only=False):

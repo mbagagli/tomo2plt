@@ -1,8 +1,0 @@
-model_path: "MOD_CH"
-origin: [8.3, 47.0]
-use_geographic_coordinates: true
-# Next 2 fields are ORIGIN dependent. Check your SIMULPS output!
-lon_short_distance_conversion: 77.466
-lat_short_distance_conversion: 111.15
-#
-west_positive: true

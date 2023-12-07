@@ -1,3 +1,0 @@
-# Use only layers that are output in the final simulps format
-1d_input_model: [5.250, 5.800, 6.000, 6.200, 6.800, 7.800, 8.100, 8.150]
-extract_events: true

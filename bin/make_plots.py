@@ -139,7 +139,6 @@ if DO_SLICES:
         ax.set_ylabel("latitude (dec.deg)", fontproperties=custom_font_bold, fontsize=12, fontweight="bold")
         ax.set_yticklabels(ax.get_yticklabels(), fontproperties=custom_font_italic, fontsize=11, fontweight="bold")
 
-
         plt.savefig(('%s/depth_SLICE_plot_%05.2f_km_%.3f_kms.png' % (
                     SLICE_PLOT_DIR, _dep, _vel)),
                     format='png', bbox_inches='tight', dpi=310)

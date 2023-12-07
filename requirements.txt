@@ -2,6 +2,7 @@ numpy>=1.23
 scipy==1.9.1
 matplotlib>=3.6
 pandas>=1.5
+obspy==1.4.0
 imageio
 pyyaml
 pyshp

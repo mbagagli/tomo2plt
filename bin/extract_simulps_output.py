@@ -13,11 +13,10 @@ simulout_path = Path(sys.argv[1])
 assert simulout_path.exists()
 config_path = Path(sys.argv[2])
 assert config_path.exists()
-# Extract
-configs = PYTMIO.read_configuration_file(config_path)
 
-
+# SPREAD function --> They call it “resolving width function” and the equation is shown in the appendix (eq A12).
+configs = PYTMIO.read_configuration_file(config_path, check_version=True)
 (grid_df, events_df, grid_matrix, event_matrix) = PYTMIO.read_simulps_output(
-            simulout_path, configs["READING"])
+            simulout_path, configs)
 
 print("DONE")

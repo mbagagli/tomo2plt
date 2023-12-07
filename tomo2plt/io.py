@@ -8,10 +8,10 @@ from datetime import datetime
 from tomo2plt import __version__
 
 
-ORIGINLON = 10.5
-ORIGINLAT = 46.0
-DEGKMLAT = 111.15  # km  (short-distance conversion Y --> check SIMULPS output)
-DEGKMLON = 77.466  # km  (short-distance conversion X --> check SIMULPS output)
+# ORIGINLON = 10.5
+# ORIGINLAT = 46.0
+# DEGKMLAT = 111.15  # km  (short-distance conversion Y --> check SIMULPS output)
+# DEGKMLON = 77.466  # km  (short-distance conversion X --> check SIMULPS output)
 
 
 def __split_string__(string, chunk_size):
@@ -40,13 +40,17 @@ def __get_arr__(file_path, matchstr):
     return out_arr
 
 
-def __extract_grid_nodes__(file_path, geographic=True):
+def __extract_grid_nodes__(file_path, geographic=False, geodict={}):
     xarr = __get_arr__(file_path, "xgrid")
     yarr = __get_arr__(file_path, "ygrid")
     zarr = __get_arr__(file_path, "zgrid")
     if geographic:
-        xarr = [((_x*-1)/DEGKMLON)+ORIGINLON for _x in xarr]
-        yarr = [(_y / DEGKMLAT)+ORIGINLAT for _y in yarr]
+        if not geodict:
+            raise ValueError("Geographic output specified, thus a "
+                             "geodict is needed!")
+        #
+        xarr = [((_x*-1)/geodict["degkm_lon"])+geodict["origin_lon"] for _x in xarr]
+        yarr = [(_y / geodict["degkm_lat"])+geodict["origin_lat"] for _y in yarr]
     #
     return (xarr, yarr, zarr)
 
@@ -392,20 +396,32 @@ def __create_matrix__(xarr_geo, yarr_geo, zarr_geo, xarr, yarr,
 # =================================================================
 
 
-def read_configuration_file(config_path):
+def read_configuration_file(config_path, check_version=True):
     # Can be either a `Path` or `str` instance
     with open(str(config_path), 'r') as yaml_file:
         configs = yaml.load(yaml_file, Loader=yaml.FullLoader)
+    #
+    if check_version:
+        # Check if the version in the file matches the required version
+        file_version = configs.get('version', None)
+        if file_version is None:
+            raise ValueError("Version not found in the configuration file.")
+        elif file_version != __version__:
+            raise ValueError(
+                "Configuration file version %r doesn't match the current "
+                "tomo2plt version (%r)" % (file_version, __version__))
     return configs
 
 
 def read_simulps_output(file_path, configs):
 
     file_path = Path(file_path)
-    store_path = Path(configs["store_tag"])
+    store_path = Path(configs["work_path"])
+    store_tag = configs["tag"]
     #
     (xarr, yarr, zarr) = __extract_grid_nodes__(
-                                str(file_path), geographic=True)
+                                str(file_path), geographic=True,
+                                geodict=configs["GENERAL"])
     (xxx, yyy, zzz) = __extract_grid_nodes__(
                                 str(file_path), geographic=False)
 
@@ -415,15 +431,6 @@ def read_simulps_output(file_path, configs):
                         start_fields=["FINAL", "P-VELOCITY", "MODEL"],
                         end_fields=["OBSERVATION", "MATRIX", "-"],
                         elem_per_line=20)
-
-    # ==============================  TO BE IMPLEMENTED SOON
-    # print("")
-    # print("... Reading DELTA-MIN1D")
-    # MIN1D, depths = __read_block__(
-    #                     file_path,
-    #                     start_fields=["velocity", "values", "on"],
-    #                     end_fields=["iteration", "step", "0"],
-    #                     elem_per_line=20)
 
     print("")
     print("... Reading RES")
@@ -435,7 +442,7 @@ def read_simulps_output(file_path, configs):
                         elem_per_line=20)
 
     print("")
-    print("... Reading RES")
+    print("... Reading KHIT")
     KHIT, depths = __read_block__(
                         str(file_path),
                         start_fields=["OBSERVATION", "MATRIX", "-"],
@@ -457,7 +464,7 @@ def read_simulps_output(file_path, configs):
     KHIT = KHIT[:, :, :-1]  # removing last element
     DWS = DWS[:, :, :-1]  # removing last element
 
-    MIN1D = configs["1d_input_model"]
+    MIN1D = configs["INPUT_MODEL_1D"]
     MIN1D_PROFILE = []
     for _dpt in depths:
         for (_depth, _pvalue) in MIN1D:
@@ -476,25 +483,24 @@ def read_simulps_output(file_path, configs):
                 xarr, yarr, depths, xxx, yyy,
                 VEL, DELTA, RES, KHIT, DWS,
                 out_path=str(
-                    store_path.parent / (store_path.stem + '_grid.csv')
+                    store_path.parent / (store_tag + '_grid.csv')
                 ))
 
     matrixpd.to_csv(
-            str(store_path.parent / (store_path.stem + '_grid_pandas.csv')),
+            str(store_path.parent / (store_tag+ '_grid_pandas.csv')),
             float_format='%.5f',
             index=False)
 
-    if configs["extract_events"]:
-        print("")
-        print("... Extracting EVENTS")
-        (eventpd, EVENTS) = __extract_events__(
-                file_path,
-                out_path=str(
-                    store_path.parent / (store_path.stem + '_events.csv')
-                ))
-        eventpd.to_csv(
-                str(store_path.parent / (store_path.stem + '_events_pandas.csv')),
-                index=False)
+    print("")
+    print("... Extracting EVENTS")
+    (eventpd, EVENTS) = __extract_events__(
+            file_path,
+            out_path=str(
+                store_path.parent / (store_tag + '_events.csv')
+            ))
+    eventpd.to_csv(
+            str(store_path.parent / (store_tag + '_events_pandas.csv')),
+            index=False)
 
     return (matrixpd, eventpd, GRID, EVENTS)
 
@@ -574,7 +580,7 @@ class MOD(object):
         else:
             raise ValueError("MISSING ORIGIN!")
 
-    def set_origin(self, lon, lat):
+    def set_origin(self, lon, lat, degkm_lon, degkm_lat):
         self.origin = (float(lon), float(lat))
 
     def get_origin(self):
