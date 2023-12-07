@@ -4,6 +4,7 @@ tutorials/
 __pycache__
 *.log
 .DS_store
+private_datasets/
 
 # Distribution / packaging
 .Python
