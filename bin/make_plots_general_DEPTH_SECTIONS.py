@@ -3,7 +3,7 @@
 import sys
 import shapefile
 import numpy as np
-from tqdm import tqdm
+import pandas as pd
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -173,6 +173,29 @@ for (profile_name, start, end) in PROFILES:
                         add_topography=configs["DEPTH_SECTIONS"]["dem_grid"],
                         isolines=configs["DEPTH_SECTIONS"]["isolines"])
 
+    # ----------------------  EVENTS
+    if configs["DEPTH_SLICES"]["plot_events"]:
+        print("Plotting events ...")
+
+        # ---- Read
+        EVENTS_PATH = (Path(configs["work_path"]) / (configs["tag"] +
+                                                     "_events.csv"))
+        EVENTS_PD = pd.read_csv(str(EVENTS_PATH),
+                                names=["OT_DATE", "OT_TIME",
+                                       "LON", "LAT", "DEP",
+                                       "MAG", "NOBS", "RMS", "X", "Y", "Z"],
+                                sep="\s+")
+        EVENTS_ARR = EVENTS_PD[["LON", "LAT", "DEP"]].values
+        EVENTS = PYTMCR.Points_2D_Grid(EVENTS_ARR, tag="EVENTS")
+
+        # ---- Project / plot
+        (_prof, _depth) = EVENTS.project_points(
+                        start, end,
+                        project=configs["DEPTH_SECTIONS"]["project_events"])
+        ax1.scatter(_prof, _depth, marker='o',
+                    linewidths=0.7, s=6, alpha=0.9,
+                    facecolor=(0/255, 250/255, 150/225), edgecolor="black")
+
     # ----------------------  INV.NODES depth
     for (_x, _y) in zip([80.0 for dd in range(min1d.shape[0])], min1d[:, 0]):
         if _y >= 0 and _y <= end[-1]:
@@ -189,11 +212,15 @@ for (profile_name, start, end) in PROFILES:
     MOHO_KOS = PYTMCR.Plane_2D_Grid("./datas/mohos/Konstantinos2023.csv",
                                     tag="Tirrenia_Kostantinos2023")
 
-    for _moho, _color in zip([MOHO_EUR, MOHO_ADR, MOHO_TYR, MOHO_KOS],
-                             ["white", "black", "red", "purple"]):
+    for _xx, (_moho, _color, _interp) in enumerate(
+                            #      0          1         2         3
+                            zip([MOHO_EUR, MOHO_ADR, MOHO_TYR, MOHO_KOS],
+                                ["white", "black", "red", "purple"],
+                                [2.0, 2.0, 2.0, 20.0])):
         print("Plotting:  %s" % _moho.tag)
         try:
-            (_prof, _depth) = _moho.get_profile(start, end, 2.0, query_profile_only=True)
+            (_prof, _depth) = _moho.get_profile(start, end, _interp,
+                                                query_profile_only=True)
             ax1.plot(_prof, _depth, color=_color)
         except ValueError:
             print("    nothing to interp...skipping!")

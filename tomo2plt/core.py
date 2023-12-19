@@ -2,7 +2,7 @@ from pathlib import Path
 import numpy as np
 import time
 
-from obspy.geodetics import locations2degrees
+from obspy.geodetics import locations2degrees, gps2dist_azimuth
 from obspy.geodetics.base import kilometers2degrees, degrees2kilometers
 from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
@@ -183,8 +183,8 @@ class TomoGrid:
         if isolines:
             contours = ax.contour(
                         x_grid, y_grid, values_on_plane,
-                        levels=isolines, colors='black',
-                        linestyles='-', lw=0.5)
+                        levels=isolines, colors="darkgray",  # colors='black',
+                        linestyles='-', linewidths=0.5)
 
             # Add labels to the contours
             contours.clabel(inline=True, fontsize=9, colors='black')
@@ -357,8 +357,8 @@ class TomoGrid:
         if isolines:
             contours = ax1.contour(
                         x_grid, y_grid, values_on_plane,
-                        levels=isolines, colors='black',
-                        linestyles='-', lw=0.5)
+                        levels=isolines, colors="darkgray",  # colors='black',
+                        linestyles='-', linewidths=0.5)
 
             # Add labels to the contours
             contours.clabel(inline=True, fontsize=9, colors='black')
@@ -366,7 +366,7 @@ class TomoGrid:
         # ----------------------------  7.25 Tomographic MOHO
         ax1.contour(x_grid, y_grid, values_on_plane,
                     levels=[7.25], colors='white',
-                    linestyles='dashed', lw=2)
+                    linestyles='dashed', linewidths=2)
 
         # ----------------------------  Resolution Matrix
         if mask_rde:
@@ -498,3 +498,88 @@ class Plane_2D_Grid:
         print("Total interpolation TIME:  %.2f min" % ((_eee-_sss)/60.0))
 
         return (dist_km_points, profile_values)
+
+
+class Points_2D_Grid:
+    """ Necessary to extract profiles of value from Start to End.
+        Valid for X Y VALUE
+    """
+
+    def __init__(self, file_path, tag="xyzGrid", **kwargs):
+        if isinstance(file_path, (str, Path)):
+            self.data = self.__load_grid__(file_path, **kwargs)
+        elif isinstance(file_path, np.ndarray):
+            assert file_path.shape[1] == 3
+            self.data = file_path
+        else:
+            raise ValueError("Unsupported input type:  %s" % type(file_path))
+        #
+        self.coordinates = self.data[:, :-1]
+        self.values = self.data[:, -1]
+        self.tag = tag
+        #
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def __load_grid__(self, file_path, **kwargs):
+        fp = Path(file_path)
+        if fp.exists():
+            _data = np.loadtxt(str(fp.resolve()), **kwargs)  #, delimiter=" ")  # Change delimiter according to your file
+        else:
+            raise ValueError("FILE:  %s  missing!" % str(fp.resolve()))
+        return _data
+
+    def project_points(self, start, end, project=None):
+        """ project args is in km """
+        # -----------------------------  Inner methods
+        def calculate_distance_to_line(point, line_start, line_end):
+            # Calculate the distances from the point to the line start and end
+            dist_start = locations2degrees(line_start[1],  # lat1
+                                           line_start[0],  # lon1
+                                           point[1],  # lat2
+                                           point[0])  # lon2
+            dist_end = locations2degrees(line_end[1],  # lat1
+                                         line_end[0],  # lon1
+                                         point[1],  # lat2
+                                         point[0])  # lon2
+
+            # Calculate the azimuths
+            _, az, _ = gps2dist_azimuth(line_start[1],  # lat1
+                                        line_start[0],  # lon1
+                                        point[1],  # lat2
+                                        point[0])  # lon2
+            _, az_line, _ = gps2dist_azimuth(line_start[1],  # lat1
+                                             line_start[0],  # lon1
+                                             line_end[1],  # lat2
+                                             line_end[0])  # lon2
+
+            # Calculate perpendicular distance to the line
+            dist_to_line = np.sin(np.abs(az - az_line) * np.pi / 180) * min(dist_start, dist_end)
+            return degrees2kilometers(dist_to_line)
+
+        def calculate_distance_along_line(point, line_start):
+            return degrees2kilometers(locations2degrees(line_start[1],  # lat1
+                                                        line_start[0],  # lon1
+                                                        point[1],  # lat2
+                                                        point[0]))  # lon2
+        # --------------------------------------------
+
+        # Set up
+        start, end = np.array(start), np.array(end)
+        if not project:
+            project = 10000  # almost infinite values to project events
+
+        # Calculate and project
+        projected_events = []
+        for event in self.data:
+            dist_to_profile = calculate_distance_to_line(event,
+                                                         start[:2],
+                                                         end[:2])
+
+            if dist_to_profile <= project:
+                distance_along_profile = calculate_distance_along_line(event,
+                                                                       start)
+                projected_events.append((distance_along_profile, event[2]))  # distance along profile and depth
+
+        projected_events = np.array(projected_events)
+        return (projected_events[:, 0], projected_events[:, 1])
