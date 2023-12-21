@@ -15,7 +15,7 @@ from obspy.geodetics.base import kilometers2degrees, degrees2kilometers
 # from PROFILES_ALL import PROFILES_EK, PROFILES_TD, PROFILES_PAPER
 
 if len(sys.argv) != 3:
-    print("USAGE: %s  SIMULPS_OUTPUT  CONFIG_PATH" %
+    print("USAGE: %s  GRID_CSV  CONFIG_PATH" %
           Path(sys.argv[0]).name)
     sys.exit()
 
@@ -99,7 +99,7 @@ for _dep in np.unique(np.sort(grid.coordinates[:, -1])):
     _vel = _vel[0, 1]
 
     # -----------------------------------------  Core-Image
-    (fig, ax) = grid.plot_depth_slice(
+    (fig, ax, cbar) = grid.plot_depth_slice(
                         start, end,
                         increment_x_km=configs["DEPTH_SLICES"]["x_km_slice"],
                         increment_y_km=configs["DEPTH_SLICES"]["y_km_slice"],
@@ -108,6 +108,7 @@ for _dep in np.unique(np.sort(grid.coordinates[:, -1])):
                         smooth=configs["DEPTH_SLICES"]["gauss_smooth"],
                         mask_rde=configs["DEPTH_SLICES"]["mask_rde"],
                         interpolate=configs["DEPTH_SLICES"]["interpolate"],
+                        palettes=configs["PALETTES"]["relative"],
                         isolines=configs["DEPTH_SLICES"]["isolines"])
 
     # -----------------------------------------  Boundaries+Coastlines
@@ -139,7 +140,7 @@ for _dep in np.unique(np.sort(grid.coordinates[:, -1])):
     if configs["DEPTH_SLICES"]["plot_nodes"]:
         nodes = np.unique(grid.coordinates[:, :2], axis=0)
         ax.scatter(nodes[:, 0], nodes[:, 1], marker='+',
-                   linewidths=1, facecolor='black',  # edgecolor="", color='black',
+                   linewidths=0.5, facecolor='black',  # edgecolor="", color='black',
                    s=3, alpha=0.25)
 
     # ---------------------- AlpArray BOUND
@@ -157,7 +158,7 @@ for _dep in np.unique(np.sort(grid.coordinates[:, -1])):
         events_xyz = events_xyz[mask]
         #
         ax.scatter(events_xyz[:, 0], events_xyz[:, 1], marker='o',
-                   linewidths=0.7, s=6, alpha=0.9,
+                   linewidths=0.7, s=6, alpha=0.8,
                    facecolor=(0/255, 250/255, 150/225), edgecolor="black")
 
     # ---------------------- SCALE
@@ -173,17 +174,29 @@ for _dep in np.unique(np.sort(grid.coordinates[:, -1])):
     ax.set_aspect(1.5)  # remember to change
 
     # --------------- FONT CHANGE
+    # Title
     ax.set_title(('DEPTH SLICE @ %.2f km - %.2f km/s' % (_dep, _vel)),
                  fontproperties=custom_font_bold, fontsize=14)
+
+    # X-axis
     ax.set_xlabel("longitude (dec.deg)",
                   fontproperties=custom_font_bold, fontsize=12)
     ax.set_xticklabels(ax.get_xticklabels(),
                        fontproperties=custom_font_italic, fontsize=11)
 
+    # Y-axis
     ax.set_ylabel("latitude (dec.deg)",
                   fontproperties=custom_font_bold, fontsize=12, fontweight="bold")
     ax.set_yticklabels(ax.get_yticklabels(),
                        fontproperties=custom_font_italic, fontsize=11, fontweight="bold")
+
+    # Colorbar
+    cbar.ax.set_ylabel(
+               "Vp (%)",
+               fontproperties=custom_font_bold, fontsize=12, fontweight="bold")
+    cbar.ax.set_yticklabels(
+            cbar.ax.get_yticklabels(),
+            fontproperties=custom_font_italic, fontsize=11, fontweight="bold")
 
     # --------------- SAVE
     plt.savefig(("%s/%s_DepthSlices_%05.1f_km.png" % (
@@ -193,10 +206,11 @@ for _dep in np.unique(np.sort(grid.coordinates[:, -1])):
     plt.savefig(("%s/%s_DepthSlices_%05.1f_km.pdf" % (
                  configs["DEPTH_SLICES"]["store_dir"],
                  configs["tag"], _dep)),
-                format='png', bbox_inches='tight', dpi=310)
+                format='pdf', bbox_inches='tight', dpi=310)
 
     if configs["DEPTH_SLICES"]["show"]:
         plt.show()
+
 
 print("DONE SLICING ...")
 print("")

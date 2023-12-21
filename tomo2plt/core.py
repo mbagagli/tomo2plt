@@ -7,9 +7,13 @@ from obspy.geodetics.base import kilometers2degrees, degrees2kilometers
 from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 
 def cpt2cmap(filename, n_bins=256):
+    if not filename:
+        raise ValueError("I need a valid *cpt file path!")
+    #
     with open(filename, 'r') as f:
         lines = f.readlines()
 
@@ -138,7 +142,7 @@ class TomoGrid:
                          increment_x_km=0.09, increment_y_km=0.09,
                          depth=20,  what="delta",
                          smooth=0.9, mask_rde=0.2,
-                         interpolate="linear",
+                         interpolate="linear", palettes=None,
                          isolines=[]):
 
         """ Extract and plot """
@@ -161,17 +165,18 @@ class TomoGrid:
         fig = plt.figure(figsize=(8, 8))
         ax = fig.add_subplot(1, 1, 1)
 
-        cmap = cpt2cmap('./datas/palettes/relative_official.cpt')
+        cmap = cpt2cmap(palettes)
         if smooth:
             from scipy import ndimage
             values_on_plane = ndimage.gaussian_filter(values_on_plane,
                                                       sigma=smooth)
         #
-        plt.pcolormesh(x_grid, y_grid, values_on_plane,
-                       cmap=cmap, vmin=-10, vmax=10,
-                       shading='gouraud', rasterized=True)
+        asd = plt.pcolormesh(x_grid, y_grid, values_on_plane,
+                             cmap=cmap, vmin=-10, vmax=10,
+                             shading='gouraud', rasterized=True)
+        asd.set_linewidth(0)
 
-        cbar = plt.colorbar(label='Vp (%)', shrink=0.4)
+        cbar = plt.colorbar(asd, label='Vp (%)', ax=ax, shrink=0.4)
         cbar.set_ticks([-10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10])  # Specify the values where you want the ticks
         cbar.set_ticklabels(['-10', '-8', '-6', '-4', '-2', '0',
                              '2', '4', '6', '8', '10'])
@@ -214,7 +219,7 @@ class TomoGrid:
                                  linewidths=1.1,
                                  colors='black')
 
-        return (fig, ax)
+        return (fig, ax, cbar)
 
     # ============================================================
     # ============================================================  VERTICAL
@@ -275,7 +280,7 @@ class TomoGrid:
                            increment_x_km=10, increment_y_km=10,
                            depth=20,  what="pvel", interpolate="linear",
                            smooth=False, mask_rde=False,
-                           add_topography=False,
+                           add_topography=False, palettes=None,
                            isolines=[]):
 
         """ Extract and plot """
@@ -341,17 +346,20 @@ class TomoGrid:
             values_on_plane = ndimage.gaussian_filter(values_on_plane,
                                                       sigma=smooth)
         #
-        cmap = cpt2cmap('./datas/palettes/absolute_official_072023.cpt')
-        cax = plt.pcolormesh(x_grid, y_grid, values_on_plane,
+        cmap = cpt2cmap(palettes)
+        asd = plt.pcolormesh(x_grid, y_grid, values_on_plane,
                              cmap=cmap, vmin=2.5, vmax=9, edgecolors='none',
                              shading='gouraud', rasterized=True)
-        cax.set_linewidth(0)
+        asd.set_linewidth(0)
 
-        # # ---------------------------- Colorbar
-        # cbar = plt.colorbar(label='Vp (km/s)', shrink=0.4) #, ax=ax1)
-        # cbar.set_ticks([3, 4, 5, 6, 7, 8, 9])  # Specify the values where you want the ticks
-        # cbar.set_ticklabels(['3', '4', '5', '6', '7', '8', '9'])
-        # cbar.ax.invert_yaxis()
+        # ---------------------------- Colorbar
+        divider = make_axes_locatable(ax1)
+        cbar_ax = divider.append_axes("left", size="1.3%", pad=1.3)
+        cbar = plt.colorbar(asd, label='Vp (km/s)',
+                            shrink=0.9, cax=cbar_ax)
+        cbar.set_ticks([3, 4, 5, 6, 7, 8, 9])  # Specify the values where you want the ticks
+        cbar.set_ticklabels(['3', '4', '5', '6', '7', '8', '9'])
+        cbar.ax.invert_yaxis()
 
         # ----------------------------  ISOLINES
         if isolines:
@@ -361,12 +369,12 @@ class TomoGrid:
                         linestyles='-', linewidths=0.5)
 
             # Add labels to the contours
-            contours.clabel(inline=True, fontsize=9, colors='black')
+            contours.clabel(inline=True, fontsize=9, colors='darkgray')
 
         # ----------------------------  7.25 Tomographic MOHO
         ax1.contour(x_grid, y_grid, values_on_plane,
                     levels=[7.25], colors='white',
-                    linestyles='dashed', linewidths=2)
+                    linestyles='dashed', linewidths=1.3)
 
         # ----------------------------  Resolution Matrix
         if mask_rde:
@@ -398,12 +406,9 @@ class TomoGrid:
         ax1.set_yticklabels([
                     "-5", "-2.5", "0", "10", "20",
                     "30", "40", "50", "60", "70"])
-
-        # ax1.set_title("DEPTH SECTION @ Start: %.3f / %.3f - End: %.3f / %.3f" %
-        #           (*start[:2], *end[:2]))
         ax1.set_aspect(2, adjustable="box", anchor="SW")
 
-        return (fig, ax1)
+        return (fig, ax1, cbar)
 
 
 class Plane_2D_Grid:

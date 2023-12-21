@@ -15,7 +15,7 @@ from obspy.geodetics.base import kilometers2degrees, degrees2kilometers
 # from PROFILES_ALL import PROFILES_EK, PROFILES_TD, PROFILES_PAPER
 
 if len(sys.argv) != 3:
-    print("USAGE: %s  SIMULPS_OUTPUT  CONFIG_PATH" %
+    print("USAGE: %s  GRID_CSV  CONFIG_PATH" %
           Path(sys.argv[0]).name)
     sys.exit()
 
@@ -216,7 +216,7 @@ for _dep in np.unique(np.sort(grid.coordinates[:, -1])):
         events_xyz = events_xyz[mask]
         #
         ax.scatter(events_xyz[:, 0], events_xyz[:, 1], marker='o',
-                   linewidths=0.7, s=6, alpha=0.9,
+                   linewidths=0.7, s=6, alpha=0.8,
                    facecolor=(0/255, 250/255, 150/225), edgecolor="black")
 
     # ---------------------- SCALE

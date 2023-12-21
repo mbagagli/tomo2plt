@@ -15,7 +15,7 @@ from obspy.geodetics.base import kilometers2degrees, degrees2kilometers
 # from PROFILES_ALL import PROFILES_EK, PROFILES_TD, PROFILES_PAPER
 
 if len(sys.argv) != 3:
-    print("USAGE: %s  SIMULPS_OUTPUT  CONFIG_PATH" %
+    print("USAGE: %s  GRID_CSV  CONFIG_PATH" %
           Path(sys.argv[0]).name)
     sys.exit()
 
@@ -112,12 +112,17 @@ if configs["DEPTH_SECTIONS"]["helper_section_map"]:
             _x, _y = zip(*shape.points)
             ax.plot(_x, _y, lw=1.0, color="teal")
 
-    # # ---------------------- Grid Nodes
-    # if configs["DEPTH_SLICES"]["plot_nodes"]:
-    #     nodes = np.unique(grid.coordinates[:, :2], axis=0)
-    #     ax.scatter(nodes[:, 0], nodes[:, 1], marker='+',
-    #                linewidths=1, facecolor='black',  # edgecolor="", color='black',
-    #                s=3, alpha=0.25)
+    # # ---------------------- Events
+    # if configs["DEPTH_SLICES"]["plot_events"]:
+    #     events = np.genfromtxt(configs["tag"]+"_events.csv")
+    #     events_xyz = events[:, [2, 3, 4]]
+    #     #
+    #     # mask = (events_xyz[:, -1] >= _dep_min) & (events_xyz[:, -1] < _dep_max)
+    #     # events_xyz = events_xyz[mask]
+    #     #
+    #     ax.scatter(events_xyz[:, 0], events_xyz[:, 1], marker='o',
+    #                linewidths=0.7, s=6, alpha=0.9,
+    #                facecolor=(0/255, 250/255, 150/225), edgecolor="black")
 
     # # ---------------------- AlpArray BOUND
     # bound = np.genfromtxt(configs["DATASETS"]["alparray_bound"])
@@ -162,7 +167,7 @@ for (profile_name, start, end) in PROFILES:
 
     print("SECTION:  %s --> Start: %5.3f / %5.3f  End: %5.3f / %5.3f" % (
            profile_name, *start[:2], *end[:2]))
-    (fig, ax1) = grid.plot_depth_section(
+    (fig, ax1, cbar) = grid.plot_depth_section(
                         start, end,
                         increment_x_km=configs["DEPTH_SECTIONS"]["x_km_sect"],
                         increment_y_km=configs["DEPTH_SECTIONS"]["y_km_sect"],
@@ -170,7 +175,10 @@ for (profile_name, start, end) in PROFILES:
                         smooth=configs["DEPTH_SECTIONS"]["gauss_smooth"],
                         mask_rde=configs["DEPTH_SECTIONS"]["mask_rde"],
                         interpolate="linear",
-                        add_topography=configs["DEPTH_SECTIONS"]["dem_grid"],
+                        add_topography=(configs["DATASETS"]["dem_grid"]
+                                        if configs["DEPTH_SECTIONS"]["plot_dem"]
+                                        else False),
+                        palettes=configs["PALETTES"]["absolute"],
                         isolines=configs["DEPTH_SECTIONS"]["isolines"])
 
     # ----------------------  EVENTS
@@ -203,14 +211,14 @@ for (profile_name, start, end) in PROFILES:
                         color="darkgray", edgecolors="black", s=30)
 
     # # ----------------------  Spada2013 MOHOs
-    MOHO_EUR = PYTMCR.Plane_2D_Grid("./datas/mohos/European.xyz",
-                                    tag="European_Moho")
-    MOHO_ADR = PYTMCR.Plane_2D_Grid("./datas/mohos/Adria.xyz",
-                                    tag="Adria_Moho")
-    MOHO_TYR = PYTMCR.Plane_2D_Grid("./datas/mohos/Tirrenia.xyz",
-                                    tag="Tirrenia_Moho")
-    MOHO_KOS = PYTMCR.Plane_2D_Grid("./datas/mohos/Konstantinos2023.csv",
-                                    tag="Tirrenia_Kostantinos2023")
+    MOHO_EUR = PYTMCR.Plane_2D_Grid(
+                configs["DATASETS"]["moho_Europe"], tag="European_Moho")
+    MOHO_ADR = PYTMCR.Plane_2D_Grid(
+                configs["DATASETS"]["moho_Adria"], tag="Adria_Moho")
+    MOHO_TYR = PYTMCR.Plane_2D_Grid(
+                configs["DATASETS"]["moho_Tirrenia"], tag="Tirrenia_Moho")
+    MOHO_KOS = PYTMCR.Plane_2D_Grid(
+                configs["DATASETS"]["moho_new"], tag="Kostantinos2023")
 
     for _xx, (_moho, _color, _interp) in enumerate(
                             #      0          1         2         3
@@ -226,14 +234,25 @@ for (profile_name, start, end) in PROFILES:
             print("    nothing to interp...skipping!")
 
     # --------------- FONT CHANGE
+    # Title
     ax1.set_title(("Start: %.3f / %.3f - End: %.3f / %.3f" % (*start[:2], *end[:2])),
                   fontproperties=custom_font_bold, fontsize=14)
 
+    # X-axis
     ax1.set_xlabel("distance along profile (km)", fontproperties=custom_font_bold, fontsize=12)
     ax1.set_xticklabels(ax1.get_xticklabels(), fontproperties=custom_font_italic, fontsize=11)
 
+    # Y-axis
     ax1.set_ylabel("depth (km)", fontproperties=custom_font_bold, fontsize=12, fontweight="bold")
     ax1.set_yticklabels(ax1.get_yticklabels(), fontproperties=custom_font_italic, fontsize=11, fontweight="bold")
+
+    # Colorbar
+    cbar.ax.set_ylabel(
+               "Vp (%)",
+               fontproperties=custom_font_bold, fontsize=12, fontweight="bold")
+    cbar.ax.set_yticklabels(
+            cbar.ax.get_yticklabels(),
+            fontproperties=custom_font_italic, fontsize=11, fontweight="bold")
 
     # --------------- SAVE
     plt.savefig(("%s/depth_SECTION__Start_%5.3f_%5.3f__End_%5.3f_%5.3f_Name_%s.png" % (
