@@ -127,7 +127,7 @@ for _dep in np.unique(np.sort(grid.coordinates[:, -1])):
     _vel = _vel[0, 1]
 
     # -----------------------------------------  Core-Image
-    (fig, ax) = grid.plot_depth_slice(
+    (fig, ax, cbar) = grid.plot_depth_slice(
                         start, end,
                         increment_x_km=configs["DEPTH_SLICES"]["x_km_slice"],
                         increment_y_km=configs["DEPTH_SLICES"]["y_km_slice"],
@@ -135,7 +135,9 @@ for _dep in np.unique(np.sort(grid.coordinates[:, -1])):
                         what=configs["DEPTH_SLICES"]["what_to_plot"],
                         smooth=configs["DEPTH_SLICES"]["gauss_smooth"],
                         mask_rde=configs["DEPTH_SLICES"]["mask_rde"],
-                        interpolate=configs["DEPTH_SLICES"]["interpolate"])
+                        interpolate=configs["DEPTH_SLICES"]["interpolate"],
+                        palettes=configs["PALETTES"]["relative"],
+                        isolines=configs["DEPTH_SLICES"]["isolines"])
 
     # -----------------------------------------  Boundaries+Coastlines
 
@@ -232,17 +234,29 @@ for _dep in np.unique(np.sort(grid.coordinates[:, -1])):
     ax.set_aspect(1.5)  # remember to change
 
     # --------------- FONT CHANGE
+    # Title
     ax.set_title(('DEPTH SLICE @ %.2f km - %.2f km/s' % (_dep, _vel)),
                  fontproperties=custom_font_bold, fontsize=14)
+
+    # X-axis
     ax.set_xlabel("longitude (dec.deg)",
                   fontproperties=custom_font_bold, fontsize=12)
     ax.set_xticklabels(ax.get_xticklabels(),
                        fontproperties=custom_font_italic, fontsize=11)
 
+    # Y-axis
     ax.set_ylabel("latitude (dec.deg)",
                   fontproperties=custom_font_bold, fontsize=12, fontweight="bold")
     ax.set_yticklabels(ax.get_yticklabels(),
                        fontproperties=custom_font_italic, fontsize=11, fontweight="bold")
+
+    # Colorbar
+    cbar.ax.set_ylabel(
+               "Vp (%)",
+               fontproperties=custom_font_bold, fontsize=12, fontweight="bold")
+    cbar.ax.set_yticklabels(
+            cbar.ax.get_yticklabels(),
+            fontproperties=custom_font_italic, fontsize=11, fontweight="bold")
 
     # --------------- SAVE
     plt.savefig(("%s/%s_DepthSlices_%05.1f_km.png" % (
@@ -252,7 +266,7 @@ for _dep in np.unique(np.sort(grid.coordinates[:, -1])):
     plt.savefig(("%s/%s_DepthSlices_%05.1f_km.pdf" % (
                  configs["DEPTH_SLICES"]["store_dir"],
                  configs["tag"], _dep)),
-                format='png', bbox_inches='tight', dpi=310)
+                format='pdf', bbox_inches='tight', dpi=310)
 
     if configs["DEPTH_SLICES"]["show"]:
         plt.show()

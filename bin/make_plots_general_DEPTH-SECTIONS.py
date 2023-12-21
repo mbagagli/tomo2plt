@@ -112,21 +112,21 @@ if configs["DEPTH_SECTIONS"]["helper_section_map"]:
             _x, _y = zip(*shape.points)
             ax.plot(_x, _y, lw=1.0, color="teal")
 
-    # # ---------------------- Events
-    # if configs["DEPTH_SLICES"]["plot_events"]:
-    #     events = np.genfromtxt(configs["tag"]+"_events.csv")
-    #     events_xyz = events[:, [2, 3, 4]]
-    #     #
-    #     # mask = (events_xyz[:, -1] >= _dep_min) & (events_xyz[:, -1] < _dep_max)
-    #     # events_xyz = events_xyz[mask]
-    #     #
-    #     ax.scatter(events_xyz[:, 0], events_xyz[:, 1], marker='o',
-    #                linewidths=0.7, s=6, alpha=0.9,
-    #                facecolor=(0/255, 250/255, 150/225), edgecolor="black")
+    # ---------------------- Events
+    if configs["DEPTH_SLICES"]["plot_events"]:
+        events = np.genfromtxt(configs["tag"]+"_events.csv")
+        events_xyz = events[:, [2, 3, 4]]
+        #
+        # mask = (events_xyz[:, -1] >= _dep_min) & (events_xyz[:, -1] < _dep_max)
+        # events_xyz = events_xyz[mask]
+        #
+        ax.scatter(events_xyz[:, 0], events_xyz[:, 1], marker='o',
+                   linewidths=0.7, s=6, alpha=0.9,
+                   facecolor=(0/255, 250/255, 150/225), edgecolor="black")
 
-    # # ---------------------- AlpArray BOUND
-    # bound = np.genfromtxt(configs["DATASETS"]["alparray_bound"])
-    # ax.plot(bound[:, 0], bound[:, 1], color='orange', lw=1.3)
+    # ---------------------- AlpArray BOUND
+    bound = np.genfromtxt(configs["DATASETS"]["alparray_bound"])
+    ax.plot(bound[:, 0], bound[:, 1], color='orange', lw=1.3)
 
     # ---------------------- SCALE
     scaleme = np.array([[2.5, 50.5],
@@ -182,7 +182,7 @@ for (profile_name, start, end) in PROFILES:
                         isolines=configs["DEPTH_SECTIONS"]["isolines"])
 
     # ----------------------  EVENTS
-    if configs["DEPTH_SLICES"]["plot_events"]:
+    if configs["DEPTH_SECTIONS"]["plot_events"]:
         print("Plotting events ...")
 
         # ---- Read
