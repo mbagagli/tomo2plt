@@ -174,6 +174,7 @@ for (profile_name, start, end) in PROFILES:
                         what=configs["DEPTH_SECTIONS"]["what_to_plot"],
                         smooth=configs["DEPTH_SECTIONS"]["gauss_smooth"],
                         mask_rde=configs["DEPTH_SECTIONS"]["mask_rde"],
+                        mask_rde_alpha=configs["DEPTH_SECTIONS"]["mask_rde_alpha"],
                         interpolate="linear",
                         add_topography=(configs["DATASETS"]["dem_grid"]
                                         if configs["DEPTH_SECTIONS"]["plot_dem"]

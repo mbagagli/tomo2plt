@@ -74,6 +74,7 @@ class TomoGrid:
         #
         if fp.exists():
             # Change delimiter according to your file
+            print("Reading:  %s" % fp.name)
             _data = np.genfromtxt(str(fp.resolve()))  # , delimiter=" ")
         else:
             raise ValueError("FILE:  %s  missing!" % str(fp.resolve()))
@@ -139,9 +140,9 @@ class TomoGrid:
         return (x_grid, y_grid, values_on_plane)
 
     def plot_depth_slice(self, start, end,
-                         increment_x_km=0.09, increment_y_km=0.09,
+                         increment_x_km=10.0, increment_y_km=10.0,
                          depth=20,  what="delta",
-                         smooth=0.9, mask_rde=0.2,
+                         smooth=0.9, mask_rde=0.2, mask_rde_alpha=1.0,
                          interpolate="linear", palettes=None,
                          isolines=[]):
 
@@ -208,6 +209,7 @@ class TomoGrid:
                                    masked_data,
                                    # alpha=0.0,  # fully transparent
                                    # alpha=0.5,
+                                   alpha=mask_rde_alpha,
                                    cmap='Greys',
                                    edgecolors='none',
                                    shading='auto',  #shading='gouraud',
@@ -215,8 +217,8 @@ class TomoGrid:
 
             # Draw contour line at threshold
             contour = ax.contour(x_grid_rde, y_grid_rde, values_on_plane_rde,
-                                 levels=[mask_rde],  # lw=1.1,
-                                 linewidths=1.1,
+                                 levels=[mask_rde],
+                                 linewidths=1.2,
                                  colors='black')
 
         return (fig, ax, cbar)
@@ -227,7 +229,7 @@ class TomoGrid:
     # ============================================================
 
     def get_depth_section(self, start, end,
-                          increment_x_km=10, increment_y_km=10,
+                          increment_x_km=10.0, increment_y_km=10.0,
                           what="pvel", interpolate="linear"):
 
         start, end = np.array(start), np.array(end)
@@ -277,9 +279,9 @@ class TomoGrid:
         return (x_grid, y_grid, dist_km, values_on_plane)
 
     def plot_depth_section(self, start, end,
-                           increment_x_km=10, increment_y_km=10,
+                           increment_x_km=10.0, increment_y_km=10.0,
                            depth=20,  what="pvel", interpolate="linear",
-                           smooth=False, mask_rde=False,
+                           smooth=False, mask_rde=False, mask_rde_alpha=1.0,
                            add_topography=False, palettes=None,
                            isolines=[]):
 
@@ -387,13 +389,15 @@ class TomoGrid:
             # Plot the masked data with transparency
             c_mask = ax1.pcolormesh(x_grid_rde,
                                     y_grid_rde,
-                                    masked_data, alpha=0.5, cmap='Greys',
+                                    masked_data,
+                                    alpha=mask_rde_alpha, cmap='Greys',
                                     edgecolors='none', shading='auto',  #shading='gouraud',
                                     rasterized=True)
 
             # Draw contour line at threshold
             contour = ax1.contour(x_grid_rde, y_grid_rde, values_on_plane_rde,
                                   levels=[mask_rde], colors='black',
+                                  linewidths=1.2,
                                   linestyles='dashed')
 
         # ----------------------------  Finish Axis
@@ -409,6 +413,10 @@ class TomoGrid:
         ax1.set_aspect(2, adjustable="box", anchor="SW")
 
         return (fig, ax1, cbar)
+
+
+
+
 
 
 class Plane_2D_Grid:

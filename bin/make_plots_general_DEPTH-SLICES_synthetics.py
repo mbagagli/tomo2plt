@@ -135,6 +135,7 @@ for _dep in np.unique(np.sort(grid.coordinates[:, -1])):
                         what=configs["DEPTH_SLICES"]["what_to_plot"],
                         smooth=configs["DEPTH_SLICES"]["gauss_smooth"],
                         mask_rde=configs["DEPTH_SLICES"]["mask_rde"],
+                        mask_rde_alpha=configs["DEPTH_SLICES"]["mask_rde_alpha"],
                         interpolate=configs["DEPTH_SLICES"]["interpolate"],
                         palettes=configs["PALETTES"]["relative"],
                         isolines=configs["DEPTH_SLICES"]["isolines"])
@@ -204,8 +205,9 @@ for _dep in np.unique(np.sort(grid.coordinates[:, -1])):
                         linestyle='dashed', lw=1.5)  # alpha=0.25)
 
     # ---------------------- AlpArray BOUND
-    bound = np.genfromtxt(configs["DATASETS"]["alparray_bound"])
-    ax.plot(bound[:, 0], bound[:, 1], color='orange', lw=1.3)
+    bound = np.genfromtxt(configs["DATASETS"]["alparray_bound"][0])
+    ax.plot(bound[:, 0], bound[:, 1],
+            **configs["DATASETS"]["alparray_bound"][1])
 
     # ---------------------- Events
     if configs["DEPTH_SLICES"]["plot_events"]:
