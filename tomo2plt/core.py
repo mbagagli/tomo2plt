@@ -45,6 +45,59 @@ def cpt2cmap(filename, n_bins=256):
     return mcolors.LinearSegmentedColormap('my_colormap', cdict, n_bins)
 
 
+def psxy(inax, file_path, delimiter=">"):
+    """ Read a txt file simil to GMT for line segment """
+    # ------ 1. Read file
+    def __parse_file__(file_path, delimiter=">"):
+        data_dict = {}
+        current_section = None
+        current_matplotlib_par = {}
+        current_plot_array = []
+
+        with open(file_path, 'r') as file:
+            for line in file:
+                line = line.strip()
+
+                if not line or line.startswith('#'):
+                    continue  # Ignore empty lines and lines starting with #
+
+                if line.startswith(delimiter):
+                    if current_section is not None:
+                        # Store data for previous section
+                        data_dict[current_section] = {
+                            'plt_par': current_matplotlib_par,
+                            'plt_array': np.array(current_plot_array)
+                        }
+
+                    # Start a new section
+                    current_section = f"Sect_{len(data_dict) + 1}"
+                    current_matplotlib_par = {}
+                    current_plot_array = []
+
+                    # Extract matplotlib parameters
+                    matplotlib_params = line[1:].strip().split(',')
+                    for param in matplotlib_params:
+                        key, value = param.split('=')
+                        current_matplotlib_par[key.strip()] = value.strip()
+                else:
+                    # Parse plot points
+                    coords = [float(x) for x in line.split()]
+                    current_plot_array.append(coords)
+
+        # Store data for the last section
+        data_dict[current_section] = {
+            'plt_par': current_matplotlib_par,
+            'plt_array': np.array(current_plot_array)
+        }
+        return data_dict
+    #
+    plot_dict = __parse_file__(file_path, delimiter=delimiter)
+    for kk, vv in plot_dict.items():
+        inax.plot(vv['plt_array'][:, 0], vv['plt_array'][:, 1], **vv['plt_par'])
+    #
+    return inax
+
+
 class TomoGrid:
     def __init__(self, file_path, **kwargs):
         self.data = self.__load_grid__(file_path, **kwargs)
@@ -415,10 +468,6 @@ class TomoGrid:
         return (fig, ax1, cbar)
 
 
-
-
-
-
 class Plane_2D_Grid:
     """ Necessary to extract profiles of value from Start to End.
         Valid for X Y VALUE
@@ -514,7 +563,7 @@ class Plane_2D_Grid:
 
 
 class Points_2D_Grid:
-    """ Necessary to extract profiles of value from Start to End.
+    """ Necessary to extract projected points
         Valid for X Y VALUE
     """
 

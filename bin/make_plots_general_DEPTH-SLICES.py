@@ -148,6 +148,10 @@ for _dep in np.unique(np.sort(grid.coordinates[:, -1])):
     ax.plot(bound[:, 0], bound[:, 1],
             **configs["DATASETS"]["alparray_bound"][1])
 
+    # ---------------------- Fauls Handy2010
+    ax = PYTMCR.psxy(ax, configs["DATASETS"]["maj_faults"], delimiter=">")
+    # ax = PYTMCR.psxy(ax, configs["DATASETS"]["min_faults"], delimiter=">")
+
     # ---------------------- Events
     if configs["DEPTH_SLICES"]["plot_events"]:
         # Test the function with depth = 2.5

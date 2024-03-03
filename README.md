@@ -18,3 +18,12 @@ $ pip install .
 ```
 
 Ready to go.. now the executable in `bin` folder will be added to your path
+
+### USAGE
+
+```
+$ extract_simulps_output.py  OUTPUT  TOMO2PLTCONFFILE
+$ make_plots_general_DEPTH-SLICES.py  OUTPUT  TOMO2PLTCONFFILE
+$ make_plots_general_DEPTH-SLICES_synthetics.py  OUTPUT  TOMO2PLTCONFFILE
+$ make_plots_general_DEPTH-SECTIONS.py  OUTPUT  TOMO2PLTCONFFILE
+```

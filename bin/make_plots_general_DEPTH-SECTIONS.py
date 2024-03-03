@@ -125,8 +125,9 @@ if configs["DEPTH_SECTIONS"]["helper_section_map"]:
                    facecolor=(0/255, 250/255, 150/225), edgecolor="black")
 
     # ---------------------- AlpArray BOUND
-    bound = np.genfromtxt(configs["DATASETS"]["alparray_bound"])
-    ax.plot(bound[:, 0], bound[:, 1], color='orange', lw=1.3)
+    bound = np.genfromtxt(configs["DATASETS"]["alparray_bound"][0])
+    ax.plot(bound[:, 0], bound[:, 1],
+            **configs["DATASETS"]["alparray_bound"][1])
 
     # ---------------------- SCALE
     scaleme = np.array([[2.5, 50.5],
