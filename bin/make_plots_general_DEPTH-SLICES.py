@@ -91,7 +91,9 @@ end = (configs["DEPTH_SLICES"]["lon_max"],
 grid = PYTMCR.TomoGrid(sys.argv[1])
 min1d = np.array(configs["INPUT_MODEL_1D"])
 
-for _dep in np.unique(np.sort(grid.coordinates[:, -1])):
+for _dep_idx, _dep in enumerate(
+                            np.unique(np.sort(grid.coordinates[:, -1]))
+                     ):
     mask = min1d[:, 0] == _dep
     _vel = min1d[mask]
     assert _vel.shape == (1, 2)
@@ -143,14 +145,13 @@ for _dep in np.unique(np.sort(grid.coordinates[:, -1])):
                    linewidths=0.5, facecolor='black',  # edgecolor="", color='black',
                    s=3, alpha=0.25)
 
+    # ---------------------- Fauls PAPER-AARSC
+    ax = PYTMCR.psxy(ax, configs["DATASETS"]["faults"], delimiter=">")
+
     # ---------------------- AlpArray BOUND
     bound = np.genfromtxt(configs["DATASETS"]["alparray_bound"][0])
     ax.plot(bound[:, 0], bound[:, 1],
             **configs["DATASETS"]["alparray_bound"][1])
-
-    # ---------------------- Fauls Handy2010
-    ax = PYTMCR.psxy(ax, configs["DATASETS"]["maj_faults"], delimiter=">")
-    # ax = PYTMCR.psxy(ax, configs["DATASETS"]["min_faults"], delimiter=">")
 
     # ---------------------- Events
     if configs["DEPTH_SLICES"]["plot_events"]:

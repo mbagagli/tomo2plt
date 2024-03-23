@@ -45,7 +45,7 @@ def cpt2cmap(filename, n_bins=256):
     return mcolors.LinearSegmentedColormap('my_colormap', cdict, n_bins)
 
 
-def psxy(inax, file_path, delimiter=">"):
+def psxy(inax, file_path, delimiter=">", first_is_reference=False):
     """ Read a txt file simil to GMT for line segment """
     # ------ 1. Read file
     def __parse_file__(file_path, delimiter=">"):
@@ -92,8 +92,15 @@ def psxy(inax, file_path, delimiter=">"):
         return data_dict
     #
     plot_dict = __parse_file__(file_path, delimiter=delimiter)
+    # breakpoint()
     for kk, vv in plot_dict.items():
-        inax.plot(vv['plt_array'][:, 0], vv['plt_array'][:, 1], **vv['plt_par'])
+        if first_is_reference:
+            _refx, _refy = vv['plt_array'][0]
+            for row in vv['plt_array']:
+                inax.plot(
+                    [_refx, row[0]], [_refy, row[1]], **vv['plt_par'], zorder=1)
+        else:
+            inax.plot(vv['plt_array'][:, 0], vv['plt_array'][:, 1], **vv['plt_par'])
     #
     return inax
 
