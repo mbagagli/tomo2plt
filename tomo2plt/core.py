@@ -255,6 +255,23 @@ class TomoGrid:
             # Add labels to the contours
             contours.clabel(inline=True, fontsize=9, colors='black')
 
+        # ----------------------------  MASK WITH WHITE
+        lower_values = values_on_plane_rde < 0.01+0.001
+        upper_values = values_on_plane_rde >= 0.01+0.001
+
+        masked_data = np.where(upper_values, values_on_plane_rde, 1)
+        masked_data = np.where(lower_values, masked_data, np.nan)
+
+        # # Plot the masked data with transparency
+        c_mask = ax.pcolormesh(x_grid_rde,
+                               y_grid_rde,
+                               masked_data,
+                               cmap='Greys',
+                               edgecolors='none',
+                               shading='auto',
+                               rasterized=True)
+        c_mask.set_facecolor('white')
+
         if mask_rde:
             # Create mask for lower and upper values
             lower_values = values_on_plane_rde < mask_rde+0.001
@@ -395,7 +412,8 @@ class TomoGrid:
                                                 query_profile_only=True)
             _topo_height[_topo_height < 0.0] = 0.0  # np.nan
 
-            ax1.plot(_topo_prof, -(_topo_height/1000.0)*4, color="black")
+            ax1.plot(_topo_prof, -(_topo_height/1000.0)*4, color="black",
+                     zorder=9999)
             # To remove the box around the subplot
             ax1.spines['top'].set_visible(False)
             ax1.spines['right'].set_visible(False)
@@ -437,6 +455,23 @@ class TomoGrid:
         ax1.contour(x_grid, y_grid, values_on_plane,
                     levels=[7.25], colors='white',
                     linestyles='dashed', linewidths=1.3)
+
+        # ----------------------------  MASK WITH WHITE
+        lower_values = values_on_plane_rde < 0.01+0.001
+        upper_values = values_on_plane_rde >= 0.01+0.001
+
+        masked_data = np.where(upper_values, values_on_plane_rde, 1)
+        masked_data = np.where(lower_values, masked_data, np.nan)
+
+        # # Plot the masked data with transparency
+        c_mask = ax1.pcolormesh(x_grid_rde,
+                                y_grid_rde,
+                                masked_data,
+                                cmap='Greys',
+                                edgecolors='none',
+                                shading='auto',
+                                rasterized=True, zorder=9998)
+        c_mask.set_facecolor('white')
 
         # ----------------------------  Resolution Matrix
         if mask_rde:
