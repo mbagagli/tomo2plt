@@ -1,6 +1,7 @@
 from pathlib import Path
 import numpy as np
 import time
+import copy
 
 from obspy.geodetics import locations2degrees, gps2dist_azimuth
 from obspy.geodetics.base import kilometers2degrees, degrees2kilometers
@@ -92,7 +93,6 @@ def psxy(inax, file_path, delimiter=">", first_is_reference=False):
         return data_dict
     #
     plot_dict = __parse_file__(file_path, delimiter=delimiter)
-    # breakpoint()
     for kk, vv in plot_dict.items():
         if first_is_reference:
             _refx, _refy = vv['plt_array'][0]
@@ -539,7 +539,26 @@ class Plane_2D_Grid:
             raise ValueError("FILE:  %s  missing!" % str(fp.resolve()))
         return _data
 
-    def get_profile(self, start, end, step_km, query_profile_only=False):
+
+# x_new = np.arange(x_min, x_max, 5)  # Regular grid with 5 km spacing
+# y_new = np.arange(y_min, y_max, 5)  # Regular grid with 5 km spacing
+# X_new, Y_new = np.meshgrid(x_new, y_new)
+# Z_new = griddata((X, Y), Z, (X_new, Y_new), method='linear')
+
+# # Define start and end points for the profile
+# start = (start_lon, start_lat)
+# end = (end_lon, end_lat)
+
+# # Extract points along the profile path
+# profile_points = np.linspace(start, end, num_points)
+
+# # Interpolate Z values along the profile path
+# profile_Z_values = griddata((X_new.flatten(), Y_new.flatten()), Z_new.flatten(), profile_points, method='linear')
+
+
+    def get_profile(self, start, end, step_km,
+                    interpolate_new_grid_km=False,
+                    query_profile_only=False):
         """ Extract profile and returns the """
         start, end = np.array(start), np.array(end)
         latlon_start, latlon_end = np.flipud(start[:2]), np.flipud(end[:2])
@@ -549,6 +568,42 @@ class Plane_2D_Grid:
 
         num_steps_xy = int(dist_km / step_km)
 
+        x = np.linspace(start[0], end[0], num_steps_xy)
+        y = np.linspace(start[1], end[1], num_steps_xy)
+
+        dist_km_points = np.linspace(0, dist_km, num_steps_xy)
+        profile_points = np.column_stack([x, y])
+
+
+        # ================= Work on matrix now
+
+        data2plot = copy.deepcopy(self.data)
+
+        if interpolate_new_grid_km:
+            assert isinstance(interpolate_new_grid_km, (int, float))
+
+            x_new = np.arange(min(data2plot[:, 0]),
+                              max(data2plot[:, 0]),
+                              kilometers2degrees(
+                                interpolate_new_grid_km
+                              ))
+            y_new = np.arange(min(data2plot[:, 1]),
+                              max(data2plot[:, 1]),
+                              kilometers2degrees(
+                                interpolate_new_grid_km
+                              ))
+            X_new, Y_new = np.meshgrid(x_new, y_new)
+            Z_new = griddata((data2plot[:, 0],
+                              data2plot[:, 1]),
+                              data2plot[:, 2],
+                              (X_new, Y_new), method='linear')
+
+            data2plot = np.array([
+                            X_new.flatten(),
+                            Y_new.flatten(),
+                            Z_new.flatten()]).T
+
+
         if query_profile_only:
             # Extract only important parts from the grid
             # 0. define bound
@@ -557,28 +612,29 @@ class Plane_2D_Grid:
             lower_lat_bound = min(start[1], end[1])
             upper_lat_bound = max(start[1], end[1])
 
+            # To avoid numerical error due to constant lon /constant lat queries
             if lower_lon_bound == upper_lon_bound:
-                _plot_data = self.data[
-                                    (self.data[:,0] >= lower_lon_bound-0.1) &
-                                    (self.data[:,0] <= upper_lon_bound+0.1) &
-                                    (self.data[:,1] >= lower_lat_bound) &
-                                    (self.data[:,1] <= upper_lat_bound)]
+                _plot_data = data2plot[
+                                    (data2plot[:,0] >= lower_lon_bound-0.1) &
+                                    (data2plot[:,0] <= upper_lon_bound+0.1) &
+                                    (data2plot[:,1] >= lower_lat_bound) &
+                                    (data2plot[:,1] <= upper_lat_bound)]
                 _plot_coord, _plot_values = _plot_data[:,:2], _plot_data[:, 2]
 
             elif lower_lat_bound == upper_lat_bound:
-                _plot_data = self.data[
-                                    (self.data[:,0] >= lower_lon_bound) &
-                                    (self.data[:,0] <= upper_lon_bound) &
-                                    (self.data[:,1] >= lower_lat_bound-0.1) &
-                                    (self.data[:,1] <= upper_lat_bound+0.1)]
+                _plot_data = data2plot[
+                                    (data2plot[:,0] >= lower_lon_bound) &
+                                    (data2plot[:,0] <= upper_lon_bound) &
+                                    (data2plot[:,1] >= lower_lat_bound-0.1) &
+                                    (data2plot[:,1] <= upper_lat_bound+0.1)]
                 _plot_coord, _plot_values = _plot_data[:,:2], _plot_data[:, 2]
 
             else:
-                _plot_data = self.data[
-                                    (self.data[:,0] >= lower_lon_bound) &
-                                    (self.data[:,0] <= upper_lon_bound) &
-                                    (self.data[:,1] >= lower_lat_bound) &
-                                    (self.data[:,1] <= upper_lat_bound)]
+                _plot_data = data2plot[
+                                    (data2plot[:,0] >= lower_lon_bound) &
+                                    (data2plot[:,0] <= upper_lon_bound) &
+                                    (data2plot[:,1] >= lower_lat_bound) &
+                                    (data2plot[:,1] <= upper_lat_bound)]
                 _plot_coord, _plot_values = _plot_data[:,:2], _plot_data[:, 2]
 
         else:
@@ -586,12 +642,6 @@ class Plane_2D_Grid:
 
         if _plot_coord.size == 0 and _plot_values.size == 0:
             raise ValueError("NO POINTS to query on !!!")
-
-        x = np.linspace(start[0], end[0], num_steps_xy)
-        y = np.linspace(start[1], end[1], num_steps_xy)
-
-        dist_km_points = np.linspace(0, dist_km, num_steps_xy)
-        profile_points = np.column_stack([x, y])
 
         # Interpolate
         _sss = time.time()
