@@ -429,6 +429,7 @@ class TomoGrid:
         cmap = cpt2cmap(palettes)
         asd = plt.pcolormesh(x_grid, y_grid, values_on_plane,
                              cmap=cmap, vmin=2.5, vmax=9, edgecolors='none',
+                             # cmap=cmap, vmin=5, vmax=8, edgecolors='none',
                              shading='gouraud', rasterized=True)
         asd.set_linewidth(0)
 
@@ -504,7 +505,7 @@ class TomoGrid:
         ax1.set_yticks(list(np.arange(-20, np.max(y_grid)+5, 10)))
         ax1.set_yticklabels([
                     "-5", "-2.5", "0", "10", "20",
-                    "30", "40", "50", "60", "70"])
+                    "30", "40", "50", "60", "70", "80"])
         ax1.set_aspect(2, adjustable="box", anchor="SW")
 
         return (fig, ax1, cbar)

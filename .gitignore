@@ -5,6 +5,7 @@ __pycache__
 *.log
 .DS_store
 private_datasets/
+datasets/dem_grid_tomo2plt.npz
 
 # Distribution / packaging
 .Python
